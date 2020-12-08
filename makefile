@@ -1,8 +1,8 @@
-SUBDIRS:=ssl_util pam_util 
+SUBDIRS:=ssl_util pam_util ytp_util
 .PHONY:clean test ECHO all
 all:$(SUBDIRS) server
 CFILES:=$(wildcard *.cpp)
-FLAGS:= -std=c++11 -w
+FLAGS:= -std=c++11 -w -g
 LIBS:= -lssl -lpam -lcrypto
 OBJDIR:=$(shell pwd)/obj
 export FLAGS OBJDIR LIBS

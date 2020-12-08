@@ -2,6 +2,7 @@ class User
 {
 public:
     static long name_len;
+    static long len;
     char *work_dir;
     char *name;
     User();

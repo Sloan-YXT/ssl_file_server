@@ -24,7 +24,7 @@ struct PamAct
 struct PamStatus
 {
 
-    const char *tips;
+    const char *tips = "";
     int err;
     int suberr;
     int fd_in;

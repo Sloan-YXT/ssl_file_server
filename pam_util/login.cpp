@@ -148,7 +148,7 @@ int pam_tty_conv(int num_msg, const struct pam_message **mess,
             strcpy(pam_news[i].news, m->msg);
             dooutput(pam_news[i], err_mark.fd_out, err_mark.ssl);
             r->resp = getinput(echo_off, err_mark.fd_in, err_mark.ssl);
-            printf("%s", r->resp);
+            //printf("%s", r->resp);
             //free(r->resp);
             //can not
             break;

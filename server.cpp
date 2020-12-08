@@ -13,6 +13,7 @@
 #include "ssl_util/ssl_util.h"
 #include "pam_util/PamClass.h"
 #include "pam_util/login.h"
+#include "ytp_util/ytp.h"
 using namespace std;
 int sockfd, connfd;
 #define PORT 9090
@@ -48,6 +49,7 @@ void client_clean_up(void)
 }
 int main(void)
 {
+    User::len = sysconf(_PC_NAME_MAX);
     User::name_len = sysconf(_SC_LOGIN_NAME_MAX);
     SSL_library_init();
     OpenSSL_add_all_algorithms();
@@ -78,6 +80,7 @@ int main(void)
     int res;
     server.sin_family = AF_INET;
     server.sin_addr.s_addr = 0;
+    //server.sin_addr.s_addr = INADDR_ANY;
     server.sin_port = htons(PORT);
     ERR_ACTION(res = ::bind(sockfd, (sockaddr *)&server, server_len), "bind error");
     ERR_ACTION(listen(sockfd, 1024), "listen failed");
@@ -110,7 +113,7 @@ int main(void)
             err_mark.fd_out = connfd;
             const char *login_tips1 = "your username:";
             const char *login_tips2 = "login success,congratulations!";
-            int n = SSL_write(ssl, login_tips1, strlen(login_tips1));
+            int n = SSL_write(ssl, login_tips1, strlen(login_tips1) + 1);
             SSL_ERR_ACTION(n, "ssl write failed in 81");
             char name[User::name_len + 1];
             int len;
@@ -124,15 +127,23 @@ int main(void)
             do
             {
                 res = pam_login(name);
+                char buffer[2000 + User::name_len];
                 if (res < 0)
                 {
                     //puts(name);
-                    n = SSL_write(ssl, err_mark.tips, strlen(err_mark.tips) + 1);
+                    Ytp login_ytp("LOGIN", "FIALURE", LOGIN_FAILURE, strlen(err_mark.tips) + 1);
+                    strcpy(buffer, login_ytp.content);
+                    strcat(buffer, err_mark.tips);
+                    n = SSL_write(ssl, buffer, strlen(buffer) + 1);
                     SSL_ERR_ACTION(n, "ssl write failed in 121");
                 }
                 else
                 {
-                    n = SSL_write(ssl, login_tips2, strlen(login_tips2) + 1);
+                    Ytp login_ytp("LOGIN", "SUCCESS", LOGIN_SUCCESS, strlen(login_tips2) + 1);
+                    //puts(login_ytp.content);
+                    strcpy(buffer, login_ytp.content);
+                    strcat(buffer, login_tips2);
+                    n = SSL_write(ssl, buffer, strlen(buffer) + 1);
                     SSL_ERR_ACTION(n, "ssl write failed in 126");
                 }
             } while (res < 0);

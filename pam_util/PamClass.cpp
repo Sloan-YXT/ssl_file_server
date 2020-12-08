@@ -6,6 +6,7 @@
 #include <openssl/err.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include "../ytp_util/ytp.h"
 extern int connfd;
 PamAct::PamAct()
 {
@@ -18,33 +19,33 @@ PamAct::~PamAct()
 char *getinput(int echoff, int fd, SSL *ssl)
 {
     printf("in getinput!\n");
-    char *p = new char[MAX_PAM_MSG_LEN];
+    char *p = new char[MAX_PAM_MSG_LEN + 300];
     //read(fd, p, MAX_PAM_MSG_LEN);
     int len;
-    int n = recv(fd, &len, sizeof(len), MSG_WAITALL);
-    len = ntohl(len);
-    printf("len:%d\n", len);
-    n = SSL_recv(ssl, p, len);
+    //int n = recv(fd, &len, sizeof(len), MSG_WAITALL);
+    //len = ntohl(len);
+    //printf("len:%d\n", len);
+    int n = SSL_read(ssl, p, MAX_PAM_MSG_LEN + 300);
     if (n <= 0)
     {
         exit(1);
     }
-    len = strlen(p);
-    if (p[len - 1] == '\n')
-    {
-        p[len - 1] = 0;
-    }
+    // len = strlen(p);
+    // if (p[len - 1] == '\n')
+    // {
+    //     p[len - 1] = 0;
+    // }
     puts(p);
     printf("leaving getinput!\n");
     return p;
 }
 void dooutput(PamAct &pam_act, int fd, SSL *ssl)
 {
-    //write(fd, pam_act.news, strlen(pam_act.news));
     char buffer[1000];
-    strcpy(buffer, "TYPE:LOGIN\n");
-    sprintf(buffer, "TYPE:LOGIN\nCODE:%d\nSTATUS:SUCCESS\n", pam_act.type);
-    strcpy(buffer, pam_act.news);
+    Ytp login_ytp("LOGIN", "SUCCESS", LOGIN_SUCCESS, strlen(pam_act.news) + 1);
+    strcpy(buffer, login_ytp.content);
+    strcat(buffer, pam_act.news);
+    //puts(buffer);
     int n = SSL_write(ssl, buffer, strlen(buffer) + 1);
     if (n <= 0)
     {
