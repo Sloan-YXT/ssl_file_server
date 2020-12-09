@@ -1,11 +1,13 @@
+#include <string>
+using namespace std;
 class User
 {
 public:
     static long name_len;
     static long len;
-    char *work_dir;
+    string work_dir;
     char *name;
     User();
-    User(char *name, char *work_dir);
+    User(char *name, string work_dir);
     ~User();
 };

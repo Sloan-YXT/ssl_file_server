@@ -27,25 +27,39 @@ extern PamStatus err_mark;
             exit(1);     \
         }                \
     } while (0);
-#define SSL_ERR_ACTION(f, a)             \
-    do                                   \
-    {                                    \
-        if (f <= 0)                      \
-        {                                \
-            perror(a);                   \
-            ERR_print_errors_fp(stdout); \
-            exit(1);                     \
-        }                                \
-    } while (0);
+#define DEBUG                                    \
+    do                                           \
+    {                                            \
+        fprintf(stderr, "debug:%d\n", __LINE__); \
+    } while (0)
+#define SSL_ERR_ACTION(f, a, ssl)                  \
+    do                                             \
+    {                                              \
+        if (f <= 0)                                \
+        {                                          \
+            perror(a);                             \
+            ERR_print_errors_fp(stdout);           \
+            printf("%d\n", SSL_get_error(ssl, f)); \
+            exit(1);                               \
+        }                                          \
+    } while (0)
 SSL_CTX *ctx;
 SSL *ssl;
 void client_clean_up(void)
 {
     perror("");
+    printf("I'm %d\n", getpid());
+    DEBUG;
     ERR_print_errors_fp(stdout);
+    DEBUG;
     SSL_shutdown(ssl);
-    SSL_free(ssl);
+    DEBUG;
+    // if (!no_clean)
+    //     SSL_free(ssl);
+    free(ssl);
+    DEBUG;
     close(connfd);
+    DEBUG;
 }
 int main(void)
 {
@@ -94,7 +108,7 @@ int main(void)
         {
         case 0:
         {
-            atexit(client_clean_up);
+            //atexit(client_clean_up);
             close(sockfd);
             ssl = SSL_new(ctx);
             SSL_set_fd(ssl, connfd);
@@ -119,7 +133,7 @@ int main(void)
             strcpy(login_buffer, login_ytp_pre.content);
             strcat(login_buffer, login_tips1);
             int n = SSL_write(ssl, login_buffer, strlen(login_buffer) + 1);
-            SSL_ERR_ACTION(n, "ssl write failed in 81");
+            SSL_ERR_ACTION(n, "ssl write failed in 81", ssl);
             char name_buf[4096 + 1];
             int len;
             printf("debug:%d\n", __LINE__);
@@ -129,7 +143,7 @@ int main(void)
             n = SSL_read(ssl, name_buf, 4096 + 1);
             char *name = login_ytp_pre.parser(name_buf);
             //printf("%d", SSL_get_error(ssl, n));
-            SSL_ERR_ACTION(n, "ssl read failed in 113");
+            SSL_ERR_ACTION(n, "ssl read failed in 113", ssl);
             int res;
             do
             {
@@ -142,7 +156,7 @@ int main(void)
                     strcpy(buffer, login_ytp_res.content);
                     strcat(buffer, err_mark.tips);
                     n = SSL_write(ssl, buffer, strlen(buffer) + 1);
-                    SSL_ERR_ACTION(n, "ssl write failed in 121");
+                    SSL_ERR_ACTION(n, "ssl write failed in 121", ssl);
                     if (err_mark.suberr == BEFOREAUTH)
                         goto restart;
                 }
@@ -153,11 +167,111 @@ int main(void)
                     strcpy(buffer, login_ytp_res.content);
                     strcat(buffer, login_tips2);
                     n = SSL_write(ssl, buffer, strlen(buffer) + 1);
-                    SSL_ERR_ACTION(n, "ssl write failed in 126");
+                    SSL_ERR_ACTION(n, "ssl write failed in 126", ssl);
                 }
             } while (res < 0);
+            char cmd_buffer[4096 + 1];
+            char response_buffer[4096 + 1];
+            string workdir = "/home/" + string(name);
+            if (strcmp(name, "root") == 0)
+            {
+                workdir = "/root";
+            }
+            User user(name, workdir);
+            n = chdir(workdir.c_str());
+            ERR_ACTION(n, "cd to home fail");
             while (1)
             {
+                DEBUG;
+                n = SSL_read(ssl, cmd_buffer, 4096);
+                SSL_ERR_ACTION(n, "ssl read failed in 173", ssl);
+                Ytp cmd_ytp;
+                char *p, *p_rest;
+                char *part1, *part2, *part3;
+
+                p = cmd_ytp.parser(cmd_buffer);
+                char *mod = " ";
+                printf("debug in 182:p:%s\n", p);
+                //part1 = strtok_r(p, mod, &p_rest);
+                part1 = strtok(p, mod);
+                if (strcmp(part1, "cd") == 0)
+                {
+                    DEBUG;
+                    part2 = strtok(NULL, mod);
+                    part3 = strtok(NULL, mod);
+                    if (part3 != NULL)
+                    {
+                        strcpy(response_buffer, "cd:参数过多");
+                    }
+                    else
+                    {
+                        printf("debug:cd %s!\n", part2);
+                        int res_cd = chdir(part2);
+                        if (res_cd < 0)
+                        {
+                            strcpy(response_buffer, strerror(errno));
+                        }
+                        else
+                        {
+                            char dir[4096];
+                            strcpy(response_buffer, "now in:");
+                            getcwd(dir, 4096);
+                            strcat(response_buffer, dir);
+                        }
+                    }
+                    cmd_ytp.setArgs("CMD", "ACTIVE", CMD, strlen(response_buffer) + 1);
+                    strcpy(cmd_buffer, cmd_ytp.content);
+                    strcat(cmd_buffer, response_buffer);
+                    n = SSL_write(ssl, cmd_buffer, strlen(cmd_buffer) + 1);
+                    SSL_ERR_ACTION(n, "ssl write failed in 208", ssl);
+                }
+                else
+                {
+                    DEBUG;
+                    //char *rest_rest;
+                    int ipc_pipe[2];
+                    pipe(ipc_pipe);
+                    int subpid = fork();
+                    if (subpid == 0)
+                    {
+                        close(ipc_pipe[0]);
+                        close(fileno(stdout));
+                        close(fileno(stderr));
+                        dup2(ipc_pipe[1], fileno(stdout));
+                        dup2(ipc_pipe[1], fileno(stderr));
+                        char *cmd_list[40 + 1];
+                        cmd_list[0] = part1;
+                        int i;
+                        for (i = 1; i < 40; i++)
+                        {
+                            cmd_list[i] = strtok(NULL, mod);
+                            // fprintf(stderr, "part %d:%s\n", i + 1, cmd_list[i]);
+                            if (cmd_list[i] == NULL)
+                            {
+                                break;
+                            }
+                        }
+
+                        execvp(part1, cmd_list);
+                        //perror("execv failed");
+                        printf("%s", strerror(errno));
+                        exit(1);
+                    }
+                    else
+                    {
+                        char tmp[4096] = {0};
+                        close(ipc_pipe[1]);
+                        read(ipc_pipe[0], tmp, 4096);
+                        printf("debug251:%s\n", tmp);
+                        cmd_ytp.setArgs("CMD", "ACTIVE", CMD, strlen(tmp) + 1);
+                        strcpy(response_buffer, cmd_ytp.content);
+                        strcat(response_buffer, tmp);
+                        n = SSL_write(ssl, response_buffer, strlen(response_buffer) + 1);
+                        SSL_ERR_ACTION(n, "ssl write failed in 239", ssl);
+                    }
+                    DEBUG;
+                }
+                DEBUG;
             }
             break;
         }
