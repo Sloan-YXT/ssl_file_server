@@ -18,7 +18,7 @@ struct PamAct
 {
     PamAct();
     ~PamAct();
-    char *news;
+    char news[PAM_MAX_MSG_SIZE + 1];
     int type;
 };
 //for pam status

@@ -9,6 +9,7 @@
 #include <cstdlib>
 #include <openssl/ssl.h>
 #include <openssl/err.h>
+#include <signal.h>
 #include "user.h"
 #include "ssl_util/ssl_util.h"
 #include "pam_util/PamClass.h"
@@ -63,6 +64,7 @@ void client_clean_up(void)
 }
 int main(void)
 {
+    signal(SIGCHLD, SIG_IGN);
     User::len = sysconf(_PC_NAME_MAX);
     User::name_len = sysconf(_SC_LOGIN_NAME_MAX);
     SSL_library_init();
@@ -147,6 +149,7 @@ int main(void)
             int res;
             do
             {
+                DEBUG;
                 res = pam_login(name);
                 char buffer[4096];
                 if (res < 0)
@@ -162,6 +165,7 @@ int main(void)
                 }
                 else
                 {
+                    DEBUG;
                     Ytp login_ytp_res("LOGIN", "SUCCESS", LOGIN_SUCCESS, strlen(login_tips2) + 1);
                     //puts(login_ytp.content);
                     strcpy(buffer, login_ytp_res.content);
@@ -170,6 +174,9 @@ int main(void)
                     SSL_ERR_ACTION(n, "ssl write failed in 126", ssl);
                 }
             } while (res < 0);
+            DEBUG;
+            printf("debug 176:%p\n", name);
+            puts(name);
             char cmd_buffer[4096 + 1];
             char response_buffer[4096 + 1];
             string workdir = "/home/" + string(name);
@@ -177,9 +184,13 @@ int main(void)
             {
                 workdir = "/root";
             }
+            DEBUG;
             User user(name, workdir);
+            DEBUG;
             n = chdir(workdir.c_str());
+            DEBUG;
             ERR_ACTION(n, "cd to home fail");
+            DEBUG;
             while (1)
             {
                 DEBUG;

@@ -12,21 +12,24 @@ extern int connfd;
 using namespace std;
 PamAct::PamAct()
 {
-    news = new char[MAX_PAM_MSG_LEN];
-    // cout << "debug:in PamAct:";
-    // cout << (void *)news << endl;
+    //exec不能和析构函数一起用，exec不会保留堆栈数据，因为没必要
+    //却仍然会在退出前析构
+    //news = new char[MAX_PAM_MSG_LEN];
+    //cout << "debug:in PamAct:";
+    //cout << (void *)news << endl;
+    //void *mdf = (void *)news;
 }
 PamAct::~PamAct()
 {
-    // cout << "debug:in PamAct deletion:";
-    // cout << (void *)news << endl;
-    delete[] news;
+    //cout << "debug:in PamAct deletion:";
+    //void *mdf = (void *)news;
+    //delete[] news;
 }
 char *getinput(int echoff, int fd, SSL *ssl)
 {
     //printf("in getinput!\n");
     char tmp[4096 + 1];
-    char *p = new char[MAX_PAM_MSG_LEN];
+    char *p = (char *)malloc(MAX_PAM_MSG_LEN);
     //every message in ytp format
     //read(fd, p, MAX_PAM_MSG_LEN);
     int len;
@@ -47,7 +50,7 @@ char *getinput(int echoff, int fd, SSL *ssl)
     // {
     //     p[len - 1] = 0;
     // }
-    //puts(p);
+    puts(p);
     //printf("leaving getinput!\n");
     return p;
 }

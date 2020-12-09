@@ -25,7 +25,7 @@ Ytp::Ytp(char *type, char *status, int code, int len)
 Ytp::~Ytp()
 {
     delete[] type;
-    delete status;
+    delete[] status;
     delete[] content;
 }
 char *Ytp::parser(char *message)
