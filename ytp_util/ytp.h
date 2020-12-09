@@ -1,8 +1,8 @@
 enum status
 {
     LOGIN_FAILURE = -1,
+    LOGIN_PROC = 0,
     LOGIN_SUCCESS = 1,
-
 };
 class Ytp
 {
@@ -15,5 +15,6 @@ public:
     Ytp(char *type, char *status, int code, int len);
     Ytp();
     char *parser(char *message);
+    void setArgs(char *type, char *status, int code, int len);
     ~Ytp();
 };

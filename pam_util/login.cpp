@@ -26,9 +26,10 @@ int pam_login(char *username)
     int err;
     if ((pw = getpwnam(username)) == NULL)
     {
-        err_mark.tips = "getpwnam failed in pam\n";
+        err_mark.tips = "user doesn't exist!\n";
+        //"getpwnam failed in pam\n";
         err_mark.err = API_ERR;
-        err_mark.suberr = UNDEF;
+        err_mark.suberr = BEFOREAUTH;
         return -1;
     }
     /* Initialize PAM framework */
@@ -37,7 +38,7 @@ int pam_login(char *username)
     {
         err_mark.tips = "part start failed\n";
         err_mark.err = PAM_FAIL;
-        err_mark.suberr = UNDEF;
+        err_mark.suberr = BEFOREAUTH;
         exit(1);
     }
     /* Authenticate user in order to unlock screen */

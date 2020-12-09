@@ -111,37 +111,46 @@ int main(void)
             err_mark.fd_err = connfd;
             err_mark.fd_in = connfd;
             err_mark.fd_out = connfd;
+            char login_buffer[1024];
             const char *login_tips1 = "your username:";
             const char *login_tips2 = "login success,congratulations!";
-            int n = SSL_write(ssl, login_tips1, strlen(login_tips1) + 1);
+        restart:
+            Ytp login_ytp_pre("LOGIN", "SETUP", LOGIN_PROC, strlen(login_tips1) + 1);
+            strcpy(login_buffer, login_ytp_pre.content);
+            strcat(login_buffer, login_tips1);
+            int n = SSL_write(ssl, login_buffer, strlen(login_buffer) + 1);
             SSL_ERR_ACTION(n, "ssl write failed in 81");
-            char name[User::name_len + 1];
+            char name_buf[4096 + 1];
             int len;
-            n = recv(connfd, &len, sizeof(len), MSG_WAITALL);
-            ERR_ACTION(n, "recv failed in 115");
-            len = ntohl(len);
-            n = SSL_recv(ssl, name, len);
+            printf("debug:%d\n", __LINE__);
+            // n = recv(connfd, &len, sizeof(len), MSG_WAITALL);
+            // ERR_ACTION(n, "recv failed in 115");
+            // len = ntohl(len);
+            n = SSL_read(ssl, name_buf, 4096 + 1);
+            char *name = login_ytp_pre.parser(name_buf);
             //printf("%d", SSL_get_error(ssl, n));
             SSL_ERR_ACTION(n, "ssl read failed in 113");
             int res;
             do
             {
                 res = pam_login(name);
-                char buffer[2000 + User::name_len];
+                char buffer[4096];
                 if (res < 0)
                 {
                     //puts(name);
-                    Ytp login_ytp("LOGIN", "FIALURE", LOGIN_FAILURE, strlen(err_mark.tips) + 1);
-                    strcpy(buffer, login_ytp.content);
+                    Ytp login_ytp_res("LOGIN", "FIALURE", LOGIN_FAILURE, strlen(err_mark.tips) + 1);
+                    strcpy(buffer, login_ytp_res.content);
                     strcat(buffer, err_mark.tips);
                     n = SSL_write(ssl, buffer, strlen(buffer) + 1);
                     SSL_ERR_ACTION(n, "ssl write failed in 121");
+                    if (err_mark.suberr == BEFOREAUTH)
+                        goto restart;
                 }
                 else
                 {
-                    Ytp login_ytp("LOGIN", "SUCCESS", LOGIN_SUCCESS, strlen(login_tips2) + 1);
+                    Ytp login_ytp_res("LOGIN", "SUCCESS", LOGIN_SUCCESS, strlen(login_tips2) + 1);
                     //puts(login_ytp.content);
-                    strcpy(buffer, login_ytp.content);
+                    strcpy(buffer, login_ytp_res.content);
                     strcat(buffer, login_tips2);
                     n = SSL_write(ssl, buffer, strlen(buffer) + 1);
                     SSL_ERR_ACTION(n, "ssl write failed in 126");

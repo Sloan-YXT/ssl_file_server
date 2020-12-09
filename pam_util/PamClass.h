@@ -11,7 +11,8 @@ enum err
 };
 enum suberr
 {
-    UNDEF = -1
+    UNDEF = -1,
+    BEFOREAUTH,
 };
 struct PamAct
 {

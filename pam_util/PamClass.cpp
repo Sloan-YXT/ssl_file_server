@@ -19,13 +19,19 @@ PamAct::~PamAct()
 char *getinput(int echoff, int fd, SSL *ssl)
 {
     printf("in getinput!\n");
-    char *p = new char[MAX_PAM_MSG_LEN + 300];
+    char tmp[4096 + 1];
+    char *p = new char[MAX_PAM_MSG_LEN];
+    //every message in ytp format
     //read(fd, p, MAX_PAM_MSG_LEN);
     int len;
     //int n = recv(fd, &len, sizeof(len), MSG_WAITALL);
     //len = ntohl(len);
     //printf("len:%d\n", len);
-    int n = SSL_read(ssl, p, MAX_PAM_MSG_LEN + 300);
+    int n = SSL_read(ssl, tmp, 4096 + 1);
+    printf("debug in getinput");
+    puts(tmp);
+    Ytp ytp_login_tmp;
+    strcpy(p, ytp_login_tmp.parser(tmp));
     if (n <= 0)
     {
         exit(1);
