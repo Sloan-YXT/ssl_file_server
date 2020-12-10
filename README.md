@@ -45,7 +45,7 @@ an openssl based crypto file server，the name is ytp-server.
     ├── ytp.cpp  
     └── ytp.h  
 
-系统使用多进程，支持并发连接，同时需要按linux系统中的用户登录，登陆时会将进程权限设置为相应进程的权限；
+系统使用多进程，支持并发连接，同时需要按linux系统中的用户登录，登陆时会将进程权限设置为相应用户的权限；
 
 运行方式：make-->cd release-->./server
 
