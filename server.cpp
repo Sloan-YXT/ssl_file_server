@@ -10,6 +10,8 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <signal.h>
+#include <sys/fcntl.h>
+#include <sys/mman.h>
 #include "user.h"
 #include "ssl_util/ssl_util.h"
 #include "pam_util/PamClass.h"
@@ -253,6 +255,42 @@ int main(void)
                     strcat(cmd_buffer, response_buffer);
                     n = SSL_write(ssl, cmd_buffer, strlen(cmd_buffer) + 1);
                     SSL_ERR_ACTION(n, "ssl write failed in 208", ssl);
+                }
+                else if (strcmp("sendfile", part1) == 0)
+                {
+                    part2 = strtok(NULL, " ");
+                    int filefd = open(part2, O_CREAT | O_RDWR | O_TRUNC, 0777);
+                    if (filefd == -1)
+                    {
+                        perror("open failed");
+                        strcpy(response_buffer, strerror(errno));
+                        goto end;
+                    }
+                    n = recv(connfd, &len, 4, 0);
+                    ERR_ACTION(n, "recv failed in sendfile:recvlen");
+                    //SSL_read(ssl, &len, sizeof(len));
+                    len = ntohl(len);
+                    lseek(filefd, len - 1, SEEK_SET);
+                    n = write(filefd, "\0", 1);
+                    ERR_ACTION(n, "prewrite failed in sendfile");
+                    //int jlen = ((len - 1) / 4096 + 1) * 4096;
+                    char *q;
+                    if ((q = (char *)mmap(NULL, len, PROT_WRITE, MAP_SHARED, filefd, 0)) == MAP_FAILED)
+                    {
+                        perror("mmap failed in sendfile");
+                        exit(1);
+                    }
+                    n = SSL_recv(ssl, (char *)q, len);
+                    SSL_ERR_ACTION(n, "ssl recvfailed in sendfile", ssl);
+                    ERR_ACTION(munmap(q, len), "munmap failed in error action");
+                    strcpy(response_buffer, "sendfile success!");
+                end:
+                    cmd_ytp.setArgs("FILE", "ACTIVE", FSM, strlen(response_buffer) + 1);
+                    strcpy(cmd_buffer, cmd_ytp.content);
+                    strcat(cmd_buffer, response_buffer);
+                    n = SSL_write(ssl, cmd_buffer, strlen(cmd_buffer) + 1);
+                    SSL_ERR_ACTION(n, "ssl write failed in sendfile", ssl);
+                    close(filefd);
                 }
                 else
                 {
