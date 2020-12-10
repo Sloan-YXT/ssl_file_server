@@ -48,9 +48,9 @@ extern PamStatus err_mark;
             exit(1);                                              \
         }                                                         \
     } while (0)
-#define DEBUG
 SSL_CTX *ctx;
 SSL *ssl;
+#define DEBUG
 void client_clean_up(void)
 {
     perror("");
@@ -232,7 +232,7 @@ int main(void)
                     }
                     else
                     {
-                        printf("debug:%d:%s(%d)\n", __LINE__, part2, strlen(part2));
+                        //printf("debug:%d:%s(%d)\n", __LINE__, part2, strlen(part2));
                         if (part2 == NULL)
                         {
                             char dir[4096];
@@ -251,7 +251,7 @@ int main(void)
                             part2 = workdir.c_str();
                         }
                         int res_cd = chdir(part2);
-                        printf("debug:cd %s!\n", part2);
+                        //printf("debug:cd %s!\n", part2);
                         if (res_cd < 0)
                         {
                             strcpy(response_buffer, strerror(errno));
@@ -353,7 +353,6 @@ int main(void)
                         SSL_ERR_ACTION(n, "ssl write failed", ssl);
                         ERR_ACTION(munmap(addr_png_1, len), "munmap failed in getfile");
                         fclose(file);
-                        strcpy(response_buffer, "getfile success");
                     }
                 }
                 else
