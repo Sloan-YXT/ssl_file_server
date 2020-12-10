@@ -314,14 +314,18 @@ int main(void)
                     if (file == NULL)
                     {
                         strcpy(response_buffer, strerror(errno));
+                        DEBUG;
                         cmd_ytp.setArgs("FILE", "ALIVE", FSMF, strlen(response_buffer) + 1);
+                        DEBUG;
                         //printf("debug in getfile:%d:%d\n", __LINE__, suc);
                         strcpy(cmd_buffer, cmd_ytp.content);
                         strcat(cmd_buffer, response_buffer);
                         n = SSL_write(ssl, cmd_buffer, strlen(cmd_buffer) + 1);
                         SSL_ERR_ACTION(n, "ssl write failed", ssl);
-                        continue;
+                        DEBUG;
+                        //printf("debug in %d:%s\n", 323, cmd_buffer);
                     }
+                    else
                     {
                         strcpy(response_buffer, "getfile success");
                         cmd_ytp.setArgs("FILE", "ALIVE", FSM, strlen(response_buffer) + 1);
