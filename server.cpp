@@ -12,6 +12,7 @@
 #include <signal.h>
 #include <sys/fcntl.h>
 #include <sys/mman.h>
+#include <pwd.h>
 #include "user.h"
 #include "ssl_util/ssl_util.h"
 #include "pam_util/PamClass.h"
@@ -24,7 +25,7 @@ extern PamStatus err_mark;
 #define ERR_ACTION(f, a) \
     do                   \
     {                    \
-        if (f < 0)       \
+        if ((f) < 0)     \
         {                \
             perror(a);   \
             exit(1);     \
@@ -35,10 +36,11 @@ extern PamStatus err_mark;
     {                                            \
         fprintf(stderr, "debug:%d\n", __LINE__); \
     } while (0)
+#define DEBUG
 #define SSL_ERR_ACTION(f, a, ssl)                  \
     do                                             \
     {                                              \
-        if (f <= 0)                                \
+        if ((f) <= 0)                              \
         {                                          \
             perror(a);                             \
             ERR_print_errors_fp(stdout);           \
@@ -177,8 +179,8 @@ int main(void)
                 }
             } while (res < 0);
             DEBUG;
-            printf("debug 176:%p\n", name);
-            puts(name);
+            //printf("debug 176:%s\n", name);
+            //puts(name);
             char cmd_buffer[4096 + 1];
             char response_buffer[4096 + 1];
             string workdir = "/home/" + string(name);
@@ -193,6 +195,17 @@ int main(void)
             DEBUG;
             ERR_ACTION(n, "cd to home fail");
             DEBUG;
+            struct passwd *user_info;
+            user_info = getpwnam(name);
+            uid_t uid = user_info->pw_uid;
+            gid_t gid = user_info->pw_gid;
+            printf("debug in %d:uid=%d;gid=%d\n", __LINE__, uid, gid);
+            n = setresgid(gid, gid, gid);
+            n = setresuid(uid, uid, uid);
+            ERR_ACTION(n, "set uid failed");
+            //n = setresgid(gid, gid, gid);
+            ERR_ACTION(n, "set gid failed");
+            ERR_ACTION(user_info == NULL, "get user info failed");
             while (1)
             {
                 DEBUG;
@@ -371,7 +384,7 @@ int main(void)
                         char tmp[4096] = {0};
                         close(ipc_pipe[1]);
                         read(ipc_pipe[0], tmp, 4096);
-                        printf("debug251:%s\n", tmp);
+                        //printf("%d:%s\n", __LINE__,tmp);
                         cmd_ytp.setArgs("CMD", "ACTIVE", CMD, strlen(tmp) + 1);
                         strcpy(response_buffer, cmd_ytp.content);
                         strcat(response_buffer, tmp);
