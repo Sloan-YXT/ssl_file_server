@@ -198,8 +198,8 @@ int main(void)
                 SSL_ERR_ACTION(n, "ssl read failed in 173", ssl);
                 Ytp cmd_ytp;
                 char *p, *p_rest;
-                char *part1, *part2, *part3;
-
+                char *part1, *part3;
+                const char *part2;
                 p = cmd_ytp.parser(cmd_buffer);
                 char *mod = " ";
                 printf("debug in 182:p:%s\n", p);
@@ -216,7 +216,7 @@ int main(void)
                     }
                     else
                     {
-
+                        printf("debug:%d:%s(%d)\n", __LINE__, part2, strlen(part2));
                         if (part2 == NULL)
                         {
                             char dir[4096];
@@ -229,6 +229,10 @@ int main(void)
                             n = SSL_write(ssl, cmd_buffer, strlen(cmd_buffer) + 1);
                             SSL_ERR_ACTION(n, "ssl write failed in 208", ssl);
                             continue;
+                        }
+                        else if (strcmp(part2, "~") == 0)
+                        {
+                            part2 = workdir.c_str();
                         }
                         int res_cd = chdir(part2);
                         printf("debug:cd %s!\n", part2);
