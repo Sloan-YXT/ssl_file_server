@@ -143,7 +143,7 @@ int main(void)
             SSL_ERR_ACTION(n, "ssl write failed in 81", ssl);
             char name_buf[4096 + 1];
             int len;
-            printf("debug:%d\n", __LINE__);
+            //printf("debug:%d\n", __LINE__);
             // n = recv(connfd, &len, sizeof(len), MSG_WAITALL);
             // ERR_ACTION(n, "recv failed in 115");
             // len = ntohl(len);
