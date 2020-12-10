@@ -36,18 +36,19 @@ extern PamStatus err_mark;
     {                                            \
         fprintf(stderr, "debug:%d\n", __LINE__); \
     } while (0)
-#define DEBUG
-#define SSL_ERR_ACTION(f, a, ssl)                  \
-    do                                             \
-    {                                              \
-        if ((f) <= 0)                              \
-        {                                          \
-            perror(a);                             \
-            ERR_print_errors_fp(stdout);           \
-            printf("%d\n", SSL_get_error(ssl, f)); \
-            exit(1);                               \
-        }                                          \
+
+#define SSL_ERR_ACTION(f, a, ssl)                                 \
+    do                                                            \
+    {                                                             \
+        if ((f) <= 0)                                             \
+        {                                                         \
+            perror(a);                                            \
+            ERR_print_errors_fp(stdout);                          \
+            printf("ssl error code:%d\n", SSL_get_error(ssl, f)); \
+            exit(1);                                              \
+        }                                                         \
     } while (0)
+#define DEBUG
 SSL_CTX *ctx;
 SSL *ssl;
 void client_clean_up(void)
@@ -210,14 +211,14 @@ int main(void)
             {
                 DEBUG;
                 n = SSL_read(ssl, cmd_buffer, 4096);
-                SSL_ERR_ACTION(n, "ssl read failed in 173", ssl);
+                SSL_ERR_ACTION(n, "ssl read failed in 213", ssl);
                 Ytp cmd_ytp;
                 char *p, *p_rest;
                 char *part1, *part3;
                 const char *part2;
                 p = cmd_ytp.parser(cmd_buffer);
                 char *mod = " ";
-                printf("debug in 182:p:%s\n", p);
+                //printf("debug in 220:p:%s\n", p);
                 //part1 = strtok_r(p, mod, &p_rest);
                 part1 = strtok(p, mod);
                 if (strcmp(part1, "cd") == 0)
@@ -307,45 +308,49 @@ int main(void)
                 }
                 else if (strcmp("getfile", part1) == 0)
                 {
+                    DEBUG;
                     part2 = strtok(NULL, " ");
                     FILE *file = fopen(part2, "r");
-                    int suc;
                     if (file == NULL)
                     {
                         strcpy(response_buffer, strerror(errno));
-                        suc = FSMF;
-                        printf("debug in getfile:%d:%d", __LINE__, suc);
-                        goto end2;
+                        cmd_ytp.setArgs("FILE", "ALIVE", FSMF, strlen(response_buffer) + 1);
+                        //printf("debug in getfile:%d:%d\n", __LINE__, suc);
+                        strcpy(cmd_buffer, cmd_ytp.content);
+                        strcat(cmd_buffer, response_buffer);
+                        n = SSL_write(ssl, cmd_buffer, strlen(cmd_buffer) + 1);
+                        SSL_ERR_ACTION(n, "ssl write failed", ssl);
+                        continue;
                     }
                     {
+                        strcpy(response_buffer, "getfile success");
+                        cmd_ytp.setArgs("FILE", "ALIVE", FSM, strlen(response_buffer) + 1);
+                        //printf("debug in getfile:%d:%d\n", __LINE__, suc);
+                        strcpy(cmd_buffer, cmd_ytp.content);
+                        strcat(cmd_buffer, response_buffer);
+                        n = SSL_write(ssl, cmd_buffer, strlen(cmd_buffer) + 1);
+                        SSL_ERR_ACTION(n, "ssl write failed", ssl);
                         fseek(file, 0, SEEK_END);
                         len = ftell(file);
                         //printf("\nlen:%d\n", len);
                         int hlen = htonl(len);
                         n = send(connfd, &hlen, sizeof(hlen), 0);
-                        ERR_ACTION(n, "sendfile len send len failed");
+                        DEBUG;
+                        ERR_ACTION(n, "sendfile len send len failed in getfile");
                         int filefd = fileno(file);
                         fseek(file, 0, SEEK_SET);
                         void *addr_png_1;
                         if ((addr_png_1 = mmap(NULL, len, PROT_READ, MAP_SHARED, filefd, 0)) == MAP_FAILED)
                         {
-                            perror("mmap failed in sendfile");
+                            perror("mmap failed in getfile");
                             exit(1);
                         };
                         n = SSL_write(ssl, addr_png_1, len);
                         SSL_ERR_ACTION(n, "ssl write failed", ssl);
-                        ERR_ACTION(munmap(addr_png_1, len), "munmap failed in sendfile");
+                        ERR_ACTION(munmap(addr_png_1, len), "munmap failed in getfile");
                         fclose(file);
                         strcpy(response_buffer, "getfile success");
-                        suc = FSM;
                     }
-                end2:
-                    cmd_ytp.setArgs("FILE", "ALIVE", suc, strlen(response_buffer) + 1);
-                    printf("debug in getfile:%d:%d", __LINE__, suc);
-                    strcpy(cmd_buffer, cmd_ytp.content);
-                    strcat(cmd_buffer, response_buffer);
-                    n = SSL_write(ssl, cmd_buffer, strlen(cmd_buffer) + 1);
-                    SSL_ERR_ACTION(n, "ssl write failed", ssl);
                 }
                 else
                 {

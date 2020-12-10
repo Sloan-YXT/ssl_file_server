@@ -50,7 +50,7 @@ char *getinput(int echoff, int fd, SSL *ssl)
     // {
     //     p[len - 1] = 0;
     // }
-    puts(p);
+    //puts(p);
     //printf("leaving getinput!\n");
     return p;
 }

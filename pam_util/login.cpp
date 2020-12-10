@@ -146,7 +146,7 @@ int pam_tty_conv(int num_msg, const struct pam_message **mess,
         case PAM_PROMPT_ECHO_ON:
             //printf("debug:146\n");
             pam_news[i].type = m->msg_style;
-            printf("debug:%p\n", pam_news[i].news);
+            //printf("debug:%p\n", pam_news[i].news);
             strcpy(pam_news[i].news, m->msg);
             dooutput(pam_news[i], err_mark.fd_out, err_mark.ssl);
             r->resp = getinput(echo_off, err_mark.fd_in, err_mark.ssl);
