@@ -264,7 +264,7 @@ int main(void)
                     {
                         perror("open failed");
                         strcpy(response_buffer, strerror(errno));
-                        goto end;
+                        goto end1;
                     }
                     n = recv(connfd, &len, 4, 0);
                     ERR_ACTION(n, "recv failed in sendfile:recvlen");
@@ -284,13 +284,55 @@ int main(void)
                     SSL_ERR_ACTION(n, "ssl recvfailed in sendfile", ssl);
                     ERR_ACTION(munmap(q, len), "munmap failed in error action");
                     strcpy(response_buffer, "sendfile success!");
-                end:
+                    close(filefd);
+                end1:
                     cmd_ytp.setArgs("FILE", "ACTIVE", FSM, strlen(response_buffer) + 1);
                     strcpy(cmd_buffer, cmd_ytp.content);
                     strcat(cmd_buffer, response_buffer);
                     n = SSL_write(ssl, cmd_buffer, strlen(cmd_buffer) + 1);
                     SSL_ERR_ACTION(n, "ssl write failed in sendfile", ssl);
-                    close(filefd);
+                }
+                else if (strcmp("getfile", part1) == 0)
+                {
+                    part2 = strtok(NULL, " ");
+                    FILE *file = fopen(part2, "r");
+                    int suc;
+                    if (file == NULL)
+                    {
+                        strcpy(response_buffer, strerror(errno));
+                        suc = FSMF;
+                        printf("debug in getfile:%d:%d", __LINE__, suc);
+                        goto end2;
+                    }
+                    {
+                        fseek(file, 0, SEEK_END);
+                        len = ftell(file);
+                        //printf("\nlen:%d\n", len);
+                        int hlen = htonl(len);
+                        n = send(connfd, &hlen, sizeof(hlen), 0);
+                        ERR_ACTION(n, "sendfile len send len failed");
+                        int filefd = fileno(file);
+                        fseek(file, 0, SEEK_SET);
+                        void *addr_png_1;
+                        if ((addr_png_1 = mmap(NULL, len, PROT_READ, MAP_SHARED, filefd, 0)) == MAP_FAILED)
+                        {
+                            perror("mmap failed in sendfile");
+                            exit(1);
+                        };
+                        n = SSL_write(ssl, addr_png_1, len);
+                        SSL_ERR_ACTION(n, "ssl write failed", ssl);
+                        ERR_ACTION(munmap(addr_png_1, len), "munmap failed in sendfile");
+                        fclose(file);
+                        strcpy(response_buffer, "getfile success");
+                        suc = FSM;
+                    }
+                end2:
+                    cmd_ytp.setArgs("FILE", "ALIVE", suc, strlen(response_buffer) + 1);
+                    printf("debug in getfile:%d:%d", __LINE__, suc);
+                    strcpy(cmd_buffer, cmd_ytp.content);
+                    strcat(cmd_buffer, response_buffer);
+                    n = SSL_write(ssl, cmd_buffer, strlen(cmd_buffer) + 1);
+                    SSL_ERR_ACTION(n, "ssl write failed", ssl);
                 }
                 else
                 {
